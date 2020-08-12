@@ -1,13 +1,27 @@
+/* Copyright note regarding the ported section of the code:
+
+Copyright 2011 by Kiavash
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 #include <graphics.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <conio.h>
-#include <dos.h>
-#include <alloc.h>
+#include <memory>
 #include <ctype.h>
 #include <math.h>
 
-extern void far * ptr;
+extern void *ptr;
 extern unsigned size;
 /*----------------------*/
 int menu(void);
@@ -28,14 +42,14 @@ void restore_s(int x, int y);
 
 int menu(void)
 {
-	register int i, j, ch;
+	int i, j, ch;
 	i = j = ch = 1;
 	int temp;
 	make_bar();
 	for (;;)
 	{
 		ch = getkey();
-		for (; ch != 13;)
+		for (; ch != 13;)	// ENTER Key
 		{
 			gotolr(&i, ch);
 			ch = getkey();
@@ -44,13 +58,15 @@ int menu(void)
 		make_down(i);
 		ch = getkey();
 		for (;
-			(ch == 77) || (ch == 75);)
+			(ch == 77)  // Right Arrow Key
+				|| (ch == 75);)	// Left Arrow Key
 		{
 			pull_up(&i, &j, ch);
 			ch = getkey();
 		}
 
-		if (ch == 27) gotodu(&i, &j, ch);
+		if (ch == 27)	// ESC Key
+			gotodu(&i, &j, ch);
 		else
 		{
 			temp = gotodu(&i, &j, ch);
@@ -59,9 +75,10 @@ int menu(void)
 			do {
 				ch = getkey();
 				temp = gotodu(&i, &j, ch);
-				if (temp != 0) return temp;
+				if (temp != 0)
+					return temp;
 				pull_up(&i, &j, ch);
-			} while (ch != 27);
+			} while (ch != 27);	// ESC Key
 		}
 	}
 }
@@ -69,23 +86,23 @@ int menu(void)
 /********************/
 void make_bar(void)
 {
-	char *m_bar[] = { " PUBLIC     ",
-		" L PARAM.   ",
-		" Lmin,max   ",
-		" Z INPUT    ",
-		" 1  STUB    ",
-		" 2  STUB    ",
-		" 3  STUB    " };
-	char *m_ba[] = { "P",
-		"L",
-		"L",
-		"Z",
-		"1",
-		"2",
-		"3" };
+	char *m_bar[] = { 	" PUBLIC     ",
+						" L PARAM.   ",
+						" Lmin,max   ",
+						" Z INPUT    ",
+						" 1  STUB    ",
+						" 2  STUB    ",
+						" 3  STUB    " };
+	char *m_ba[] = { 	"P",
+						"L",
+						"L",
+						"Z",
+						"1",
+						"2",
+						"3" };
 
-	register int i;
-	void *buf;
+	int i;
+	//void *buf;
 	setcolor(MAGENTA);
 	setfillstyle(SOLID_FILL, getmaxcolor());
 	bar(2, 2, getmaxx() - 2, 24);
@@ -94,9 +111,11 @@ void make_bar(void)
 	rectangle(1, 459, getmaxx() - 3, 477);
 	line(100, 458, 100, 478);
 	setcolor(RED);
-	outtextxy(20, 464, "COMMENT");
+	outtextxy(20, 464, (char*)
+		"COMMENT");
 	setcolor(BLACK);
-	outtextxy(120, 464, "IMPEDANCE TRANSFORM AND MATCHING BY SMIT CHART");
+	outtextxy(120, 464, (char*)
+		"IMPEDANCE TRANSFORM AND MATCHING BY SMIT CHART");
 	setcolor(DARKGRAY);
 	for (i = 0; i < 7; i++) outtextxy(10 + i *79, 10, m_bar[i]);
 	setcolor(RED);
@@ -109,31 +128,45 @@ void make_bar(void)
 	}
 }
 
-/***********************/
+/*******
+ * Original getkey() used INT13H to return BIOS scan code
+ * replaced it with getch() implementation and converted
+ * ASCII to BIOS scan code
+ ******/
 int getkey(void)
 {
-	register int x;
-	union REGS r;
-	union scan
+	int bios_scan_code;
+	int pressed_key_ascii = getch();
+	switch(pressed_key_ascii)
 	{
-		int c;
-		char ch[2];
-	}
-
-	sc;
-	r.h.ah = 0;
-	sc.c = int86(0x16, &r, &r);
-	if (sc.ch[0] == 0)
-		return sc.ch[1];
-	x = sc.ch[0];
-	x >> 8;
-	return x;
+		case KEY_ESC:
+			bios_scan_code = 27;
+			break;
+		case KEY_RIGHT:
+			bios_scan_code = 77;
+			break;
+		case KEY_LEFT:
+			bios_scan_code = 75;
+			break;
+		case KEY_UP:
+			bios_scan_code = 72;
+			break;
+		case KEY_DOWN:
+			bios_scan_code = 80;
+			break;
+		case SDLK_RETURN:
+			bios_scan_code = 13;
+			break;
+		default:
+			bios_scan_code = pressed_key_ascii;
+		}
+		
+	return bios_scan_code;
 }
 
-/**********************/
 void highlight(int num)
 {
-	register int temp = num;
+	int temp = num;
 	setcolor(BLUE);
 	rectangle(5 + (temp - 1) *79, 5, 4 + temp *79, 21);
 	rectangle(3 + (temp - 1) *79, 3, 2 + temp *79, 23);
@@ -146,7 +179,7 @@ void highlight(int num)
 /****************************/
 void lowlight(int num)
 {
-	register int temp = num;
+	int temp = num;
 	setcolor(DARKGRAY);
 	rectangle(5 + (temp - 1) *79, 5, 4 + temp *79, 21);
 	rectangle(3 + (temp - 1) *79, 3, 2 + temp *79, 23);
@@ -159,7 +192,7 @@ void lowlight(int num)
 /*******************/
 void gotolr(int *i, int key)
 {
-	register int t;
+	int t;
 	t = *i;
 	switch (key)
 
@@ -220,27 +253,27 @@ void gotolr(int *i, int key)
 void make_down(int i)
 {
 	char *abar[] = { " SMIT CHART ",
-		"   DEMO     ",
-		"   EXIT     " };
+					"   DEMO     ",
+					"   EXIT     " };
 	char *bbar[] = { "  LOAD IMP. ",
-		"   VSWR     ",
-		"   GAMA     " };
+					"   VSWR     ",
+					"   GAMA     " };
 	char *cbar[] = { "  LOAD IMP. ",
-		" Z max,min  ",
-		" V max,min  " };
+					" Z max,min  ",
+					" V max,min  " };
 	char *dbar[] = { "  LOAD IMP. ",
-		"  LOAD LINE ",
-		"  Z INPUT   " };
+					"  LOAD LINE ",
+					"  Z INPUT   " };
 	char *ebar[] = { "  LOAD IMP. ",
-		"   Ls &Lt  ",
-		" SCH. GRAPH " };
+					"   Ls &Lt  ",
+					" SCH. GRAPH " };
 	char *fbar[] = { "  LOAD IMP. ",
-		" Ld,Lt, Lt1 ",
-		" SCH. GRAPH " };
+					" Ld,Lt, Lt1 ",
+					" SCH. GRAPH " };
 	char *gbar[] = { "  LOAD IMP. ",
-		" Ld,t,t1,t2 ",
-		" SCH. GRAPH " };
-	register int j;
+					" Ld,t,t1,t2 ",
+					" SCH. GRAPH " };
+	int j;
 	setfillstyle(SOLID_FILL, getmaxcolor());
 	setcolor(DARKGRAY);
 	switch (i)
@@ -425,7 +458,7 @@ int gotodu(int *i, int *j, int key)
 /*********************************/
 void highdown(int i, int j, int flag)
 {
-	register int ip, jp;
+	int ip, jp;
 	ip = i;
 	jp = j;
 	if (flag == 0) setcolor(WHITE);
@@ -480,7 +513,7 @@ void highdown(int i, int j, int flag)
 /*********************************/
 int select_func(int i, int j)
 {
-	int temp;
+	int temp = 0;
 	switch (i)
 	{
 		case 1:
