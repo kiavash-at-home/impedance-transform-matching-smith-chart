@@ -9,12 +9,16 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Wno-write-strings -std=c++98 -Wpedantic -O2
 
 # Libraries to link
-LIBS = -lSDL_bgi -lSDL2 -lm
+LIBS = ../third_party/sdl-bgi/SDL_bgi.o -lSDL2 -lm
 
 all: $(PROGRAM)
 
-$(PROGRAM): $(SOURCES)
+$(PROGRAM): $(SOURCES) SDL_bgi.o
 	$(CC) $(CFLAGS) $(SOURCES) -o $(PROGRAM) $(LIBS)
 
+SDL_bgi.o:
+	make -C ../third_party/sdl-bgi $@
+
 clean:
-	rm -f impedance-transform *.o
+	make -C ../third_party/sdl-bgi clean
+	rm -f ${PROGRAM} *.o
